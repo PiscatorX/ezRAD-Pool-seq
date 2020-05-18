@@ -2,25 +2,45 @@
 
 //NXF_ANSI_LOG=false
 //script parameters
-params.reads	=  "/media/drewx/1D995C4565A1FA44/Users/A0047731/My Documents/dx.tmp/Pool-seq"
-params.pattern 	=  "R{1,2}_001.fastq.gz"
+params.reads	=  "/home/drewx/Documents/ez-pool-seq/RawReads"
+params.pattern 	=  "*_R{1,2}_001.fastq.gz"
+params.hcpu	=  4
+reads_pattern 	=  params.reads + "/*" + params.pattern
 
-reads_pattern 	= file(params.reads + "/*" + params.pattern)
-raw_reads     	= Channel.fromFilePairs(reads_pattern)
+Channel.fromFilePairs(reads_pattern)
+       .ifEmpty{ exit 1, "params.reads empty no reads found" }
+       .into{ raw_reads; raw_reads_trimgalore }
+
+raw_reads.map{ it  -> [ it[1][0], it[1][1]] }
+         .set{ raw_reads_FastQC }
 
 
 process FastQC{
-    echo true
-    input:
-	set read1, read2 from raw_reads
 
+    echo true
+    publishDir "$PWD/FastQC" 
+    cpus params.hcpu 
+    input:
+	file reads from raw_reads_FastQC.collect()
+
+	
     output:
-	
-	
+	set  file("*fastqc.html"),  file("multiqc_*") into FastQC_results
+
+    script:
+
+
 """
 
-echo $read1 
-
+    fastqc \
+        -format fastq \
+        -threads $params.hcpu \
+        $reads
+	
+    multiqc .
+  
 """
      	
 }
+
+

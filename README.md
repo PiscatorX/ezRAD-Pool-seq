@@ -1,5 +1,5 @@
 # ezRAD-Pool-seq
-ezRAD pool-seq data analysis
+*An ezRAD pool-seq data analysis pipeline*
 
 An implementation of the ezRAD pipeline described in Phair et. al. 2019.
 

@@ -6,15 +6,7 @@ An implementation of the ezRAD pipeline described in Phair et. al. 2019.
 
 ** Downloading the _Z. marina_ genome from NCBI  **
 
-* The [jq](https://stedolan.github.io/jq/) and [datasets](https://www.ncbi.nlm.nih.gov/datasets/docs/command-line-start/) commandline tools were used to find and download the Z. marina genome
-  ```
-  datasets assembly-descriptors tax-name 'zostera marina' --limit ALL  | jq '.datasets[].assembly_accession' -r
-  ```
-* Check available types of annotation available for the assemble.
-  ```
-  
-
-  ```
+* The _Z. marina_ assembly is available by [ftp](https://ftp.ncbi.nih.gov/genomes/genbank/plant/Zostera_marina/all_assembly_versions/GCA_001185155.1_Zosma_marina.v.2.1/).
 
 
 

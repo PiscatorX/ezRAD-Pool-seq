@@ -4,7 +4,9 @@ NXF_ANSI_LOG=false
 //script parameters
 params.reads	=  "/home/drewx/Documents/ez-pool-seq/RawReads2"
 params.pattern 	=  "*_R{1,2}_001.fastq.gz"
-params.output   =  "$PWD/ezpool_seq"
+
+//params.pattern 	=  "*_{1,2}.fastq"
+params.output   =  "$PWD/ezRAD_Test"
 params.hcpu	=  4
 params.bwa_ref  =  "/opt/DB_REF/Genomes/Zostera_marina/GCA_001185155.1_Zosma_marina.v.2.1_genomic.fna"
 
@@ -40,7 +42,7 @@ Channel.fromFilePairs(reads_pattern)
 
 //     fastqc \
 //         -format fastq \
-//         -threads $params.hcpu \
+//         -threads ${params.hcpu} \
 //         $reads
 	
 //     multiqc .
@@ -97,28 +99,63 @@ process  BWA_MEM{
        input:
             set val(sample),  file(reads) from raw_reads_bwa
 
-
       output:
            file "${sample}.*"  into SAM_files
-
+	   file "Plots"  into stat_plots
 
 """
    
    bwa mem \
        $params.bwa_ref \
        $reads \
-       -t params.hcpu \
+       -t ${params.hcpu} \
        -o ${sample}.sam \
        -T 20
 
    samtools \
        view \
-   
+       -t ${params.hcpu} \
+       ${sample}.sam \
+       -o ${sample}.bam 
             
+   samtools \
+      sort \
+      -t ${params.hcpu} \
+      ${sample}.bam \
+      -o ${sample}.sorted.bam
+
+   samtools \
+      index \
+      ${sample}.sorted.bam
+
+   samtools \
+      stats \
+      ${sample}.sorted.bam > \
+      ${sample}.sorted.stats
+
+  samtools \
+      idxstats \
+      --threads ${params.hcpu} \
+      ${sample}.sorted.bam > \
+      ${sample}.sorted.idxstats
+
+  plot-bamstats \
+      ${sample}.sorted.stats \
+      -p Plots/${sample}
+      
+  multiqc  . \
+      --outdir \
+      Plots
+
 
 """
-
+//idxstats sequence name, sequence length, # mapped read-segments and # unmapped read-segments.
 }
 
-
-
+//TO DO 
+// Mapped reads were subsampled to median coverage in SAMTools using the view command with the ‘-s’ flag.
+//Struggling to figure how this out
+//Median coverage of all reads combined?
+//How was this done?
+//Custom script
+//Will look at this when I have SNP counts

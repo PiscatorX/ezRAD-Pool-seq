@@ -38,23 +38,25 @@ class SplitSample(GetRegion):
         
 
         
-    def split_simple(self):
-
-        for sample in self.sample_list:
-            print(sample)
-        # """
-        #    get split SNP file from the file
-
-        # """
-        # #SNP type: [pop, rc, rc|pop];
-        # #pop.. a SNP within or between the populations;
-        # #rc.. a SNP between the reference sequence character and the consensus of at least one populaton;
-        # #rc|pop..both
-
-        #region_dict = OrderedDict() 
+    def get_data(self):
+        """
+            extract data from the rc file
+        
+        """
+        self.alleles = []
+        self.rc_data = []
+        self.maa = []
+        self.mia = []
         for row in self.csv_reader:
-             region = row[0]
-             print(region)
+            if row[1].startswith("#"):
+                continue
+            rc_data.append(row[:7])
+            snps = list(row[8])
+            alleles.append(snps)
+            maa.append([ row[9+i]  for i in  range(0, len(snps))])
+            mia.append([ row[9+len(snps)+i]  for i in  range(0, len(snps))])
+            
+    
             # snp_types, snp_char, snp_type = self.SNP_type(zip(row[7],row[9:]))
     #         islice = len(snp_types) * 2
     #         if snp_type == "private":
@@ -110,5 +112,6 @@ if  __name__ == '__main__':
     parser.add_argument('-t','--target_coverage', type=int, default = 30)
     parser.add_argument('-s','--sample_list', type = argparse.FileType('r'), default = "bam_files")
     args = parser.parse_args()
-    split_sample = CountSNP(args.rc_file, args.target_coverage, args.sample_list)
+    split_sample = SplitSample(args.rc_file, args.target_coverage, args.sample_list)
+    split_sample.get_data()
     #count.getSNPs()    

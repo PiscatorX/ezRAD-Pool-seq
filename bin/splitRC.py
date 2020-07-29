@@ -26,17 +26,16 @@ class SplitSample(GetRegion):
 
     """ Count SNPs in a popoolation2 *_rc file   """
     
-    def __init__(self, rc_file, target_coverage, sample_list):
+    def __init__(self, rc_file, target_coverage, sample_list, biallelic):
         
         """
             initialise the GetRegion class and set up file parsing
 
         """
         super().__init__(rc_file, target_coverage)
-        #self.outfile = csv.writer(outfile, delimiter="\t")
         self.sample_list = ( fname.split('.')[0]+".snps" for fname in sample_list.read().splitlines())
+        self.biallelic = biallelic
         
-
         
     def get_data(self):
         """
@@ -50,60 +49,35 @@ class SplitSample(GetRegion):
         for row in self.csv_reader:
             if row[1].startswith("#"):
                 continue
-            rc_data.append(row[:7])
-            snps = list(row[8])
-            alleles.append(snps)
-            maa.append([ row[9+i]  for i in  range(0, len(snps))])
-            mia.append([ row[9+len(snps)+i]  for i in  range(0, len(snps))])
-            
-    
-            # snp_types, snp_char, snp_type = self.SNP_type(zip(row[7],row[9:]))
-    #         islice = len(snp_types) * 2
-    #         if snp_type == "private":
-    #             #called_row  = row[1:7 + islice] + snp_types + [snp_type]
-    #             called_row  = row + snp_types + [snp_type]
-    #             print("\t".join(called_row))
-    #             #self.outfile.writerow(called_row)
+            self.rc_data.append(row[:7])
+            self.snps = list(row[8])
+            n = len(self.snps)
+            self.alleles.append(self.snps)
+            self.maa.append([ row[9+i]  for i in  range(0, n)])
+            self.mia.append([ row[9 + n +i]  for i in  range(0, n)])
 
-            
-    # def SNP_type(self, major_freqs):
-        
-    #     """
-           
-    #        calls whether the snp is private and public
 
-    #     """
+    def write_samples(self):
+         """
+            write out sample files according to order in sample file list
+         
+         """
 
-    #     get_coverage = lambda frac : map(int, frac.split('/'))        
-    #     mf, major_freqs  = tee(major_freqs)
-    #     snp_types = []
-    #     snp_char  = []
-    #     pvt_count = []
-    #     pop = True
-        
-    #     for allele_rec in major_freqs:
-    #          allele_type = None
-    #          snp = allele_rec[0]
-    #          count, cov = get_coverage(allele_rec[1])
-    #          allele_type = str(count)
-    #          if (count == 0):
-    #              pvt_count.append(2)
-                 
-    #          elif (count == cov):
-    #              pvt_count.append(1)
-                 
-    #          else:
-    #              if pop:
-    #                  pvt_count.append(1)
-    #                  pop = False
+         biallelic = lambda row: row[3] == '2' if self.biallelic else lambda row: True
+         public_snp  = lambda maa, mai:  all([int(maa.split("/")[0]), int(mai.split("/")[0])])
+         
+         for j,fname in enumerate(self.sample_list):
+            sample_file = csv.writer(open(fname, "w"), delimiter="\t")
 
-    #          snp_char.append(snp)
-    #          snp_types.append(allele_type)
-        
-    #     snp_type = "private" if sum(pvt_count) >= 2 else "public"
-
-    #     return snp_types, snp_char, snp_type
-            
+            for i, row  in  enumerate(self.rc_data):
+                snp_check = "-"
+                maa  = self.maa[i][j]
+                mia  = self.mia[i][j]
+                if biallelic(row):
+                    if public_snp(maa, mia):
+                        snp_check = "snp"
+                row = row + [self.alleles[i][j]] + [maa] + [mia] + [snp_check]
+                sample_file.writerow(row)
 
                 
 if  __name__ == '__main__':
@@ -111,7 +85,11 @@ if  __name__ == '__main__':
     parser.add_argument('rc_file', type=argparse.FileType('r'))
     parser.add_argument('-t','--target_coverage', type=int, default = 30)
     parser.add_argument('-s','--sample_list', type = argparse.FileType('r'), default = "bam_files")
+    parser.add_argument('-b','--biallelic', action = "store_false", default = True, help = "turn off biallelic filtering")
     args = parser.parse_args()
-    split_sample = SplitSample(args.rc_file, args.target_coverage, args.sample_list)
+    split_sample = SplitSample(args.rc_file,
+                               args.target_coverage,
+                               args.sample_list,
+                               args.biallelic)
     split_sample.get_data()
-    #count.getSNPs()    
+    split_sample.write_samples() 

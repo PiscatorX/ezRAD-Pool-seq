@@ -2,6 +2,22 @@
 
 ## An implementation of the ezRAD pipeline described in Phair _et. al._ (2019).
 
+#### Getting the publication raw sequence data
+The sequence data for this study has deposited into the NCBI Sequence read archive (SRA) and may be accessed from the [SRA Run Selector](https://www.ncbi.nlm.nih.gov/Traces/study/) using the [PRJNA503110](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA503110) Bioproject accession number. Sequence read metadata and sequence read accession is available for download. We use the list of accessions to download the raw sequence read data using the [SRA toolkit](https://www.ncbi.nlm.nih.gov/books/NBK158900/#SRA_download.how_do_i_download_and_insta).
+
+To downwload the sequences reads, this may take a while as at all sequences are ~7.5 GB.
+``` 
+xargs -a  SraAccList.txt -I{} prefetch {}
+
+```
+To generate paired-ends of the downloaded sequence data.
+
+```
+xargs -a ../SraAccList.txt -I{} fastq-dump –split-e  {}
+ 
+```
+
+
 #### Downloading the _Z. marina_ genome from NCBI Genomes. 
 
 The [_Zostera marina_](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=29655&lvl=3&lin=f&keep=1&srchmode=1&unlock) assembly is available by [ftp](https://ftp.ncbi.nih.gov/genomes/genbank/plant/Zostera_marina/all_assembly_versions/GCA_001185155.1_Zosma_marina.v.2.1/). The [genomic.fna.gz](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/001/185/155/GCA_001185155.1_Zosma_marina.v.2.1/GCA_001185155.1_Zosma_marina.v.2.1_genomic.fna.gz). Interesting piece on contigs and scaffolds [here](https://www.pacb.com/blog/genomes-vs-gennnnes-difference-contigs-scaffolds-genome-assemblies/).
@@ -32,7 +48,6 @@ Mapped reads and unmapped reads were calculated using the samtools _idxstats_ op
 Pileup files are then analysed using [Popoolation2](https://sourceforge.net/projects/popoolation2/files/latest/download) which is well suited for pool data such as ezRAD. The pileup file is converted into a sync file and SNPs called. SNPs  are called from multiple regions, however, the SNP to Genepop tool can only be used on a single regions. As SNPs are callled from multiple regions, a custom Python script ```get_region.py``` is used to extract regions and coordinates based on the *_rc file. This script is such that a single contig and coordinates coveraging all SNPs are covered and all regions meeting the target and maximum coverage parameters.
 
 Multiple Genepop files are generated with each contig represented by a Genepop file. These file need to be merged to make a master Genepop file and the  custom Python```merge_genepop.py``` is used.
-
 
 ## Citations ##
 

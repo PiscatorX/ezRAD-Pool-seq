@@ -342,28 +342,7 @@ process pileup2SNP{
 //mpileup2sync="java -ea -Xmx7g -jar /opt/popoolation2_1201/mpileup2sync.jar --threads ${params.hcpu}"
 //https://sourceforge.net/p/popoolation2/wiki/Tutorial/
 }
-// col1: reference chromosome (contig)
-// col2: referenced position
-// col3: reference character
-// col4: number of alleles found in all populations
-// col5: allele characters in all populations (sorted by counts in all populations)
-// col6: sum of deletions in all populations (should be zero, if not the postion may not be reliable)
-// col7: SNP type: [pop, rc, rc|pop];
-//pop.. a SNP within or between the populations;
-//rc.. a SNP between the reference sequence character and the consensus of at least one populaton; rc|pop..both
-// col8: most frequent allele in all populations [12345..]
-// col9: second most frequent allele in all populations [12345..]
-// col10 - col9+n: frequencies of the most frequent allele (major) in the form "allele-count/coverage"
-// col10+n - col9+2n: frequencies of the second most frequent allele (minor) in the form "allele-count/coverage"
 
-
-
-// Channel.fromPath("/home/drewx/Documents/ez-pool-seq/ClinidX/popooltn/mpileup_SNP_rc").into{mpileup_snps_rc1; mpileup_snps_rc2; mpileup_snps_rc3; mpileup_snps_rc4}
-// Channel.fromPath("/home/drewx/Documents/ez-pool-seq/work/f4/2387311c6dc9d1f12ddbfcb4562858/samtools.pileup").into{samtools_mpileup1;
-// 														  samtools_mpileup2;
-// 														  samtools_mpileup3;
-// 														  samtools_mpileup4}
-// sample_list = Channel.fromPath("/home/drewx/Documents/ez-pool-seq/ClinidX/popooltn2/bam_files")
 
 
 process rc2region{

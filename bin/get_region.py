@@ -45,24 +45,30 @@ class GetRegion(object):
         for row in self.csv_reader:
             region = row[0]
             #get major allels and corresponding freq
-            if not self.check_target(zip(row[7],row[9:])):
+            if self.check_target(zip(row[7],row[9:])):
+                region_dict.setdefault(region,[]).append(int(row[1]))
+                print(row, self.check_target(zip(row[7],row[9:])))
+            else:
                 sys.stdout.write("!fail "+"\t".join(row) + "\n")
-                continue
+        
             
-            region_dict.setdefault(region,[]).append(int(row[1]))
+            
 
         #pprint.pprint(region_dict)    
         chr_start_end = {}
         min_max = lambda val: (min(val), max(val)) 
         for key,values in region_dict.items():
             min_x, max_x = min_max(values)
-            #To stdout
+            max_x = max_x + 1 if min_x == max_x else max_x
             print("{}:{}-{}".format(key, min_x, max_x))
 
             
     def check_target(self, major_freqs):
         get_coverage = lambda frac : map(int, frac.split('/'))
         for allele_rec in major_freqs:
+            if (allele_rec[0] == "N"):
+                #print(allele_rec[0])
+                return False
             count, cov = get_coverage(allele_rec[1])
             if cov <= self.target_coverage:
                 return False

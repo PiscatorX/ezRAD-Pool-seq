@@ -2,106 +2,107 @@
 
 NXF_ANSI_LOG=false
 //script parameters
-params.reads	=  "/home/drewx/Documents/ez-pool-seq/RawReads2"
-params.pattern 	=  "*_R{1,2}_001.fastq.gz"
-
-//params.pattern 	=  "*_{1,2}.fastq"
-params.output   =  "$PWD/Clinid_/"
+params.reads  =  "/home/drewx/Documents/ez-pool-seq/Z_marina/"
+params.pattern 	=  "*{1,2}.fastq.gz"
+params.target_coverage = 30
+params.pool_size = params.target_coverage
+params.max_coverage = 500
+params.min_coverage = 5
+params.mia_count    = 2
+params.min_qual = 20
+params.output   =  "$PWD/Z_capensis/"
 params.hcpu	=  4
+
 params.bwa_ref  =  "/opt/DB_REF/Genomes/Zostera_marina/GCA_001185155.1_Zosma_marina.v.2.1_genomic.fna"
-params.faidx_ref  =  "/opt/DB_REF/Genomes/Zostera_marina/GCA_001185155.1_Zosma_marina.v.2.1_genomic.fna.fai"
+// params.faidx_ref  =  "/opt/DB_REF/Genomes/Zostera_marina/GCA_001185155.1_Zosma_marina.v.2.1_genomic.fna.fai"
+// params.gtf =  "/opt/DB_REF/Genomes/Zostera_marina/GCA_001185155.1_Zosma_marina.v.2.1_genomic.gtf2"
 
 
 reads_pattern 	=  params.reads + "/*" + params.pattern
 
 Channel.fromFilePairs(reads_pattern)
        .ifEmpty{ exit 1, "params.reads empty no reads found" }
-       .into{raw_reads_trimgalore; raw_reads_bwa }
-       //raw_reads;
+       .into{raw_reads; raw_reads_trimgalore}
        
 
-//raw_reads.map{ it  -> [ it[1][0], it[1][1]] }
-//         .set{ raw_reads_FastQC }
+raw_reads.map{ it  -> [ it[1][0], it[1][1]] }
+         .set{ raw_reads_FastQC }
 
 
 
-// process FastQC{
+process FastQC{
 
-//     echo true
-//     publishDir "$output/FastQC" 
-//     cpus params.hcpu 
-//     input:
-// 	file reads from raw_reads_FastQC.collect()
+    publishDir  params.output + "/FastQC", mode: 'move' 
+    cpus params.hcpu 
+    input:
+	file reads from raw_reads_FastQC.collect()
 
 	
-//     output:
-// 	set  file("*fastqc.html"),  file("multiqc_*") into FastQC_results
+    output:
+	set  file("*fastqc.html"),  file("multiqc_*") into FastQC_results
 
-//     script:
+    script:
 
 
-// """
+"""
 
-//     fastqc \
-//         -format fastq \
-//         -threads ${params.hcpu} \
-//         $reads
+    fastqc \
+        -format fastq \
+        -threads ${params.hcpu} \
+        $reads
 	
-//     multiqc .
+    multiqc .
   
-// """
+"""
      	
-// }
+}
 
 
 
 
-// process Trim_Galore{
+process Trim_Galore{
 
-//     echo true
-//     publishDir params.output + "/TrimGalore" 
-//     cpus params.hcpu 
-//     input:
-//          set val(sample),  file(reads) from raw_reads_trimgalore
+    publishDir params.output + "/TrimGalore", mode: 'copy'
+    cpus params.hcpu 
+    input:
+         set val(sample),  file(reads) from raw_reads_trimgalore
 
-//     output:
-// 	 file("*val_{1,2}.fq.gz") into TrimGalore
-// 	 file("TrimQC") into Trim_galore_FastQC
+    output:
+	 set val(sample), file("*val_{1,2}.fq.gz") into  reads_bwa
+	 file("TrimQC") into Trim_galore_FastQC
 	 
-//     script:
-
-
-// """
-//     mkdir TrimQC
+script:
+"""
+    mkdir TrimQC
     
-//     trim_galore \
-//         --paired \
-//         --cores $params.hcpu \
-//         --quality 20 \
-//         --length  30 \
-//         --fastqc \
-//         $reads
+    trim_galore \
+        --paired \
+        --cores $params.hcpu \
+        --quality 20 \
+        --length  30 \
+        --fastqc \
+        $reads
 
-//     multiqc  .
+    multiqc  .
     
-//     mv *fastqc.html  *report*   TrimQC
+    mv *fastqc.html  *report*   TrimQC
 	      
-// """
+"""
      	
-// }
-
+}
 
 
 
 process  BWA_MEM{
 
-       publishDir params.output + "/bwa_mem/sam/" 
+       
+     publishDir params.output + "/bwa_mem/sam/", mode: 'copy'
        cpus params.hcpu 
        input:
-            set val(sample),  file(reads) from raw_reads_bwa
+         set val(sample),  file(reads) from reads_bwa
 
-      output:
-           set val(sample), file("${sample}.*")  into SAM_files
+     output:
+          set val(sample), file("${sample}.*")  into SAM_files
 
 """
 
@@ -114,20 +115,23 @@ process  BWA_MEM{
 """
 
 }
+//TO DO
+//Add Read groups
+
 
 
 
 process  samtools_index{
 
-       publishDir params.output + "/BAM/" 
-       cpus params.hcpu 
-       input:
-            set val(sample),  file(sam_file) from SAM_files
+     publishDir params.output + "/BAM/" , mode: 'copy'
+     cpus params.hcpu 
+     input:
+          set val(sample),  file(sam_file) from SAM_files
 
-      output:
-           set val(sample), file("${sample}_sorted.bam") into (bam_stats, bam_RG)
-	   set val(sample), file("${sample}_sorted.bam.bai") into (index_files)
-	   file("${sample}_sorted.bam.bai") into index_files2
+     output:
+          set val(sample), file("${sample}_sorted.bam") into (bam_stats, bam_RG)
+	  set val(sample), file("${sample}_sorted.bam.bai") into (index_files)
+	  file("${sample}_sorted.bam.bai") into index_files2
 	   
 """
      samtools \
@@ -153,22 +157,23 @@ process  samtools_index{
 }
 
 
+
 process  bam_stats{
 
        
-       publishDir params.output + "/BAM_stats" 
-       cpus params.hcpu 
-       input:
-            set val(sample),  file(bam_file) from bam_stats
-	    set val(sample), file(index) from index_files
+    publishDir params.output + "/BAM_stats", mode: 'copy'
+    cpus params.hcpu 
+    input:
+         set val(sample),  file(bam_file) from bam_stats
+	 set val(sample), file(index) from index_files
 
-      output:
-           file "${sample}_sorted*"  into stats
-	   file "plots"  into stat_plots
+     output:
+         file "${sample}_sorted*"  into stats
+	 file "plots"  into stat_plots
 
 """
 
-     samtools \
+    samtools \
     	stats \
     	${sample}_sorted.bam > \
     	${sample}_sorted.stats
@@ -186,12 +191,13 @@ process  bam_stats{
     multiqc  . \
     	--outdir \
     	plots
-    
 
 """
 //idxstats sequence name, sequence length, # mapped read-segments and # unmapped read-segments.
+
 }
-//to do 
+
+//TO DO 
 // mapped reads were subsampled to median coverage in samtools using the view command with the ‘-s’ flag.
 //struggling to figure how this out
 //median coverage of all reads combined?
@@ -204,13 +210,13 @@ process  bam_stats{
 process  AddReadGroups{
 
      
-     publishDir params.output + "/BAM/"
+    publishDir params.output + "/BAM/", mode: 'copy'
      
-     input:
-           set val(sample), file(bam_file) from bam_RG
+    input:
+         set val(sample), file(bam_file) from bam_RG
 
-     output:
-           file("${sample}_rg.bam") into (bam_mpileup1, bam_mpileup2)
+    output:
+          file("${sample}_rg.bam") into (bam_mpileup1, bam_mpileup2)
 
 """
 
@@ -229,17 +235,20 @@ process  AddReadGroups{
 }
 
 
-Channel.fromPath("/home/drewx/Documents/ez-pool-seq/ClinidX/BAM/*sorted.bam").into{bam_mpileup1; bam_mpileup2}
 
 process mpileup{
   
-    publishDir params.output + "/mpileup"
+    publishDir params.output + "/mpileup", mode: 'copy'
     input:
-         file bam_files from bam_mpileup1.collect()
+        file bam_files from bam_mpileup1.collect()
 	
     output:
-        file("bam_files")
-	file("samtools.pileup") into samtools_mpileup
+        file("bam_files") into sample_list
+	file("samtools.pileup") into (samtools_mpileup1,
+                                      samtools_mpileup2,
+				      samtools_mpileup3,
+				      samtools_mpileup4)
+				      
 	    
 """
 
@@ -266,13 +275,13 @@ process mpileup{
 
 process bcftools{
 
-    publishDir params.output + "/bcftools"
+    publishDir params.output + "/bcftools", mode: 'move'
     input:
         file bam_files from bam_mpileup2.collect()
         
 
     output:
-        file("bam_files")
+        file("bam_files") 
 	file("bcftools_calls.vcf") into bcftools_mpileup
 	    
 """
@@ -302,15 +311,15 @@ process bcftools{
 process pileup2SNP{
 
 
-    echo true
-    //errorStrategy 'ignore'
-    publishDir params.output + "/popooltn2"
+    publishDir params.output + "/popooltn2", mode: 'copy'
     
     input:
-         file pileup from samtools_mpileup
+         file pileup from samtools_mpileup1
 	 
     output:
-        set file("mpileup.sync"), file("mpileup_SNP*") into pileup_snps
+        file("mpileup.sync") into mpileup_sync
+        file("mpileup_SNP_rc") into (mpileup_snps_rc1, mpileup_snps_rc2) 
+	   file("mpileup_SNP_pwc") into mpileup_snps_pwc
 
 
 """
@@ -333,13 +342,253 @@ process pileup2SNP{
 //mpileup2sync="java -ea -Xmx7g -jar /opt/popoolation2_1201/mpileup2sync.jar --threads ${params.hcpu}"
 //https://sourceforge.net/p/popoolation2/wiki/Tutorial/
 }
+// col1: reference chromosome (contig)
+// col2: referenced position
+// col3: reference character
+// col4: number of alleles found in all populations
+// col5: allele characters in all populations (sorted by counts in all populations)
+// col6: sum of deletions in all populations (should be zero, if not the postion may not be reliable)
+// col7: SNP type: [pop, rc, rc|pop];
+//pop.. a SNP within or between the populations;
+//rc.. a SNP between the reference sequence character and the consensus of at least one populaton; rc|pop..both
+// col8: most frequent allele in all populations [12345..]
+// col9: second most frequent allele in all populations [12345..]
+// col10 - col9+n: frequencies of the most frequent allele (major) in the form "allele-count/coverage"
+// col10+n - col9+2n: frequencies of the second most frequent allele (minor) in the form "allele-count/coverage"
+
+
+
+// Channel.fromPath("/home/drewx/Documents/ez-pool-seq/ClinidX/popooltn/mpileup_SNP_rc").into{mpileup_snps_rc1; mpileup_snps_rc2; mpileup_snps_rc3; mpileup_snps_rc4}
+// Channel.fromPath("/home/drewx/Documents/ez-pool-seq/work/f4/2387311c6dc9d1f12ddbfcb4562858/samtools.pileup").into{samtools_mpileup1;
+// 														  samtools_mpileup2;
+// 														  samtools_mpileup3;
+// 														  samtools_mpileup4}
+// sample_list = Channel.fromPath("/home/drewx/Documents/ez-pool-seq/ClinidX/popooltn2/bam_files")
+
+
+process rc2region{
+
+
+    echo true
+    publishDir params.output + "/popooltn2", mode: 'copy'
+    input:
+         file mpileup_snps_rc1
+	 
+
+    output:
+         file("regions.txt") into (genome_region1, genome_region2)
+
+"""
+
+    get_region.py \
+        --target_coverage ${params.target_coverage} \
+        ${mpileup_snps_rc1} > regions.txt
+
+
+"""
+
+}
+
+
+
+process splitRC{
+
+
+    echo true
+    publishDir params.output + "/sample_SNP", mode: 'copy'
+    input:
+         file mpileup_snps_rc2
+	 file sample_list
+
+    output:
+         file("*.snps") into snp_files
+
+"""
+
+    splitRC.py \
+       ${mpileup_snps_rc2} \
+       -s ${sample_list}
+
+"""
+
+}
+
+
+
+    
+process countSNPs{
+
+    echo true
+    publishDir params.output + "/popooltn2", mode: 'move'
+    input:
+        file sample_snp  from snp_files.collect()
+
+    output:
+         file("SNP.counts")
+   
+script:
+"""
+
+    grep -c "snp\$" ${sample_snp} | tee  SNP.counts  
+
+
+"""
+
+}
+
+
+
+process sync2GenePop{
+
+    publishDir params.output + "/popooltn2", mode: 'copy'
+    input:
+         each region from genome_region1.splitText()
+	 file sync_file from mpileup_sync
+	 
+    output:
+        file("${region_id}.genepop") into genepop_merge
+	  
+	     
+
+script:
+(region_id,coord) = region.tokenize(":")
+
+
+"""
+
+    subsample_sync2GenePop.pl \
+         --input ${sync_file} \
+         --output ${region_id}.genepop \
+         --target-coverage ${params.target_coverage} \
+         --max-coverage ${params.max_coverage} \
+         --method fraction \
+          --diploid \
+         --region ${region}
+                 
+"""
+
+}
+
+
+
+process Genepop_merge{
+
+    //echo true
+    publishDir params.output + "/popooltn2", mode: 'copy'
+    input:
+         file genepop from genepop_merge.collect()
+	 
+    output:
+        file("pool.Genepop") into pool
+	file("Genepop.ref") into ref
+	  	     
+
+script:
+"""
+    merge_genepop.py *.genepop     
+                 
+"""
+
+}
+ 
+
+
+process TajimaPi{
+
+    publishDir params.output + "/diversityMetrics", mode: 'copy'
+    input:
+         file samtools_mpileup2
+
+    output:
+         file("${samtools_mpileup2.baseName}.*")
+
+	 
+         
+"""
+
+   Variance-sliding.pl \
+       --input ${samtools_mpileup2} \
+       --output ${samtools_mpileup2.baseName}.pi \
+       --snp-output ${samtools_mpileup2.baseName}.pi.snps \
+       --fastq-type sanger \
+       --measure pi \
+       --window-size 100 \
+       --step-size 100 \
+       --pool-size ${params.pool_size} \
+       --min-qual ${params.min_qual} \
+       --min-count ${params.mia_count} \
+       --min-coverage ${params.min_coverage} \
+       --max-coverage ${params.max_coverage} 
+
+           
+"""
+
+
+}
 
 
 
 
+process TajimaD{
+
+    publishDir params.output + "/diversityMetrics", mode: 'copy'
+    input:
+         file samtools_mpileup4
+
+    output:
+         file("${samtools_mpileup4.baseName}.*")
+
+	 
+         
+"""
+
+   Variance-sliding.pl \
+       --input ${samtools_mpileup4} \
+       --output ${samtools_mpileup4.baseName}.D \
+       --snp-output ${samtools_mpileup4.baseName}.D.snps \
+       --fastq-type sanger \
+       --measure D \
+       --window-size 100 \
+       --step-size 100 \
+       --pool-size ${params.pool_size} \
+       --min-qual ${params.min_qual} \
+       --min-count ${params.mia_count} \
+       --min-coverage ${params.min_coverage} \
+       --max-coverage ${params.max_coverage} 
+  
+           
+"""
+}
 
 
 
 
+process WattersonTheta{
+
+    publishDir params.output + "/diversityMetrics", mode: 'copy'
+    input:
+         file samtools_mpileup4
+
+    output:
+         file("${samtools_mpileup4.baseName}.*")
+         
+"""
+
+   Variance-sliding.pl \
+       --input ${samtools_mpileup4} \
+       --output ${samtools_mpileup4.baseName}.theta \
+       --snp-output ${samtools_mpileup4.baseName}.theta.snps \
+       --fastq-type sanger \
+       --measure theta \
+       --window-size 100 \
+       --step-size 100 \
+       --pool-size ${params.pool_size} \
+       --min-qual ${params.min_qual} \
+       --min-count ${params.mia_count} \
+       --min-coverage ${params.min_coverage} \
+       --max-coverage ${params.max_coverage} 
+           
+"""
 
 
+}

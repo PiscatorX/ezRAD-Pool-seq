@@ -5,7 +5,7 @@
 #### Getting the publication raw sequence data
 The sequence data for this study has deposited into the NCBI Sequence read archive (SRA) and may be accessed from the [SRA Run Selector](https://www.ncbi.nlm.nih.gov/Traces/study/) using the [PRJNA503110](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA503110) Bioproject accession number. Sequence read metadata and sequence read accession is available for download. We use the list of accessions to download the raw sequence read data using the [SRA toolkit](https://www.ncbi.nlm.nih.gov/books/NBK158900/#SRA_download.how_do_i_download_and_insta).
 
-To downwload the sequences reads, this may take a while as at all sequences are ~7.5 GB.
+To downwload the sequences reads, this may take a while as all sequences add up to ~7.5 GB.
 ``` 
 xargs -a  SraAccList.txt -I{} prefetch {}
 
